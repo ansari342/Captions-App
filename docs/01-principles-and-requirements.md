@@ -1,34 +1,42 @@
-# AyahFlow Mobile — Principles & Requirements
+# Quran Captions App: Principles & Requirements
 
-Status: Draft v0.1 · Phase 1 of 3 (Principles & Requirements → Design → Code)
+Status: Draft v0.2 · Phase 1 of 3 (Principles & Requirements → Design → Code)
 
-## 0. What we're porting
+## 0. Product summary
 
-[ayahflow.ai](https://ayahflow.ai) is an AI caption generator for Quran recitation videos:
+This is a brand-new, free iOS app. It turns a Quran recitation clip into a beautifully captioned video, ready to post to TikTok, Instagram Reels and YouTube Shorts.
 
-1. User uploads a recitation (audio or video).
-2. AI detects the surah and ayah range.
-3. Arabic text (Uthmani script, KFGQPC Hafs font) is synced word-by-word to the audio, with translation in up to 16 languages.
-4. A captioned video is rendered for TikTok / Instagram / YouTube in multiple aspect ratios.
-5. Free to try; paid tiers (site metadata indicates 4 offers, $0–$99; exact plans TBC).
+1. The user picks or records a recitation (video or audio).
+2. The app works out which surah and ayahs are recited.
+3. It syncs the Arabic text word by word to the recitation and adds an English translation.
+4. It exports a video with captions that look excellent and fade between ayahs smoothly.
 
-The mobile app should be the *fastest path from "I just recorded a recitation" to "captioned video posted"*. Phones are where these videos are recorded and published, so mobile is the natural home for this product, not a cut-down version of it.
+The idea is inspired by ayahflow.ai, but this is our own product. It has its own name, brand, design and technology, and copies none of that site's code, copy or visuals.
 
-> Note: the site could not be fetched directly from the build environment; details above come from search snippets of ayahflow.ai and must be verified against the live site / backend.
+**The north star is caption quality.** The typography, timing and transitions must look good enough that people share the video because of how it looks. Every other decision serves that.
+
+### Decisions from review (v0.1 → v0.2)
+
+| Question | Decision |
+|---|---|
+| Backend / API | Nothing exists, so we build our own pipeline |
+| Pricing | Free. No accounts, paywalls or in-app purchases in v1 |
+| Languages | Arabic captions plus English translation only |
+| Brand | A new name, logo, colours and fonts, created in Design |
+| Platform | iOS first |
 
 ---
 
 ## 1. Principles
 
-1. **Reverence first.** The Quran's text is sacred. Never mangle Arabic: correct Uthmani glyphs, harakat, ayah markers, RTL shaping. No ads, sounds, emojis, or gimmicky animations over ayahs. Text accuracy beats speed or flashiness.
-2. **Phone-native, not a shrunken website.** Built around the camera roll, share sheet, and vertical video. One-handed use, thumb-reachable primary actions.
-3. **Three taps to a captioned video.** Pick a clip → confirm the detected surah/ayahs → export. Everything else (styles, languages, fine-tuning) is optional and progressive.
-4. **AI suggests, the human confirms.** Detection results are always shown and easy to correct (surah, ayah range, word timing). Never silently publish AI output.
-5. **Preview what you'll get.** Live on-device preview of captions over the video. The export must match the preview.
-6. **Resilient to real-world conditions.** Large video files, flaky mobile networks, app backgrounding: uploads resume, jobs continue server-side, users get notified when the video is ready.
-7. **Respect users' content and privacy.** Upload only what's needed, offer to delete originals after processing, and never use recitations for training without explicit opt-in.
-8. **Inclusive and global.** Full RTL support for Arabic/Urdu/Farsi UIs. 16 translation languages. Accessible typography, Dynamic Type, screen readers, sufficient contrast.
-9. **One backend, many clients.** Reuse the existing AyahFlow detection/alignment/render pipeline and accounts. The app is a client, not a fork of the product.
+1. **Captions are the product.** Spend design and engineering effort on caption typography, timing and motion first. Accounts, settings and the rest come second.
+2. **Reverence and correctness.** Quran text comes only from a verified source, never from the speech-recognition output itself. Uthmani script, harakat, ayah-end markers and RTL shaping must always be correct. Nothing gimmicky goes over the ayahs: no bouncing, emoji or sound effects.
+3. **Motion is calm.** Transitions should breathe: soft fades, gentle easing, no hard cuts, nothing that competes with the recitation. They follow the reciter's rhythm, not a fixed clock.
+4. **The preview is the export.** The same rendering engine drives the live preview and the final video, so the result matches the preview frame for frame.
+5. **Three steps to a finished video.** Pick a clip, confirm the ayahs, export. Style choices are optional and come with tasteful defaults.
+6. **AI suggests, the user confirms.** Always show the detected surah and ayah range, and make it easy to correct.
+7. **Private and free to run.** Process on the device wherever possible. That keeps recitations on the phone, keeps the app free without server costs, and lets it work offline.
+8. **Feels at home on iOS.** Follow native iOS patterns: the photo picker, the share sheet, haptics, Dynamic Type and VoiceOver.
 
 ---
 
@@ -36,115 +44,130 @@ The mobile app should be the *fastest path from "I just recorded a recitation" t
 
 | Persona | Job to be done |
 |---|---|
-| **Reciter / Qari** | "I recorded myself. Make it shareable with proper captions, fast." |
-| **Islamic content creator / page admin** | "Batch-produce consistent, branded reels from famous reciters' audio." |
-| **Masjid / institute media team** | "Turn Taraweeh or Jumu'ah clips into posts with translations for our community." |
-| **Learner** | "Save clips with word-by-word captions to revise and share with family." |
+| **Reciter** | "I recorded myself. Make it look beautiful and shareable, fast." |
+| **Islamic content creator** | "Produce consistent, high-quality reels from recitations I post regularly." |
+| **Masjid media volunteer** | "Turn a Taraweeh clip into a post with English meaning for the community." |
+| **Learner** | "Keep clips with synced text to revise and share with family." |
 
 ---
 
-## 3. Functional requirements
+## 3. Caption quality requirements (the core)
+
+### 3.1 Typography
+- Arabic is set in a high-quality Uthmani Quran font (candidates: KFGQPC Uthmanic Hafs, Amiri Quran; licensing confirmed in Design), with correct shaping, ligatures and full harakat.
+- Ayah-end markers (۝ with Arabic-Indic numerals) are rendered properly.
+- English translation sits below the Arabic in a clean sans or serif. It is visually secondary through size, weight and opacity.
+- Text never touches the frame edges. Layout respects platform safe zones, so the TikTok, Reels and Shorts UI never covers captions.
+- Captions stay legible on any footage: an adaptive scrim, soft shadow or blur behind the text, never a heavy box by default.
+- Text renders sharply at export resolution (1080×1920 and above). The video is never upscaled, and text is never blurred by compression.
+
+### 3.2 Segmentation
+- Long ayahs are split into readable chunks at natural breaks. Waqf (pause) marks come first, then word boundaries, with a maximum of about 2 lines of Arabic on screen.
+- English chunks are split to follow the Arabic chunk on screen, so meaning stays aligned.
+- Repeated passages, which reciters often repeat, are handled correctly: the chunk appears again rather than skipping ahead.
+
+### 3.3 Timing
+- Word-level timestamps come from aligning the audio to the verified text.
+- Each chunk appears slightly *before* its first word is recited (lead-in of about 150–250 ms), so viewers read along rather than chase the audio.
+- Each chunk stays up through pauses and breaths, then leaves just before the next chunk arrives. There are no blank flashes between consecutive chunks.
+- The user can nudge a chunk's start and end in a simple editor (P1), with frame-accurate scrubbing.
+
+### 3.4 Motion & transitions
+- The default transition is a soft crossfade with a slight rise and blur-to-sharp settle on entry, and a fade with a slight blur on exit. Durations are about 300–500 ms with ease-in-out curves.
+- The outgoing and incoming chunks overlap gracefully. They never stack illegibly and never pop.
+- Word-by-word emphasis is optional: the word being recited gently brightens or tints while the rest stays dimmer. It moves smoothly, not as a jumpy karaoke highlight.
+- Translation fades in a beat after the Arabic, about 100 ms, for a layered, calm feel.
+- At least 3 or 4 curated caption styles ship in v1 (e.g. "Serene", "Classic", "Minimal", "Bold"). Each is a full set of typography plus motion, not just a colour swap.
+- Respect Reduce Motion in the app UI. Exported videos always use the chosen style.
+- Preview and export run at 60 fps or the source frame rate, with no dropped frames during transitions.
+
+---
+
+## 4. Functional requirements
 
 Priority: **P0** = MVP, **P1** = fast follow, **P2** = later.
 
-### 3.1 Onboarding & account
-- P0 Sign in with Apple, Google, email (same accounts as the web app).
-- P0 Free-trial path: try one video before forcing sign-up (if the backend allows it).
-- P0 Default translation language and UI language picker (auto-detected from the device).
-- P1 Sync history and projects with the web app.
+### 4.1 Import
+- P0 Pick a video or audio file from Photos or Files.
+- P0 Trim to the section to caption. The target is clips of up to 3 minutes, which covers short-form social.
+- P1 Record audio or video in-app.
+- P1 "Share to [App]" share extension from Photos and other apps.
 
-### 3.2 Import
-- P0 Pick video or audio from the photo library / files.
-- P0 Record audio or video in-app.
-- P1 Import from a link (YouTube/TikTok URL), if the web app supports it.
-- P1 Trim the clip before upload, to cut upload size and cost.
-- P1 Share-sheet extension ("Share to AyahFlow" from Photos, TikTok, WhatsApp).
+### 4.2 Detection & alignment
+- P0 Identify the surah and the start and end ayah from the recitation.
+- P0 Show the result with a confidence indicator. The user can confirm, or pick the surah and ayah range manually.
+- P0 Word-level alignment of the verified text to the audio.
+- P0 Show clear progress while processing on the device.
+- P1 Handle recitations that repeat ayahs, or skip around, within the clip.
 
-### 3.3 AI detection & alignment
-- P0 Upload with progress, background/resumable upload.
-- P0 Show the detected surah and ayah range with a confidence indicator. User confirms or edits.
-- P0 Word-by-word synced Arabic, using the backend alignment.
-- P1 Manual timing correction: tap a word and nudge it earlier or later.
-- P2 Reciter detection and labelling.
+### 4.3 Editor
+- P0 Live preview of the video with captions.
+- P0 Choose a caption style preset.
+- P0 Toggle the English translation on or off.
+- P0 Choose an aspect ratio: 9:16 (default), 4:5, 1:1, 16:9, with crop and reposition of the source video.
+- P0 Background for audio-only input: tasteful gradients or blurred imagery that come with the app.
+- P1 Adjust caption position, size and word-by-word highlighting.
+- P1 Timing editor: nudge chunk boundaries.
+- P1 Optional small watermark or handle text set by the user (their own, not ours).
 
-### 3.4 Caption editor & styling
-- P0 Live preview: video plus animated captions (Arabic, optional translation, optional transliteration).
-- P0 Choose translation language (the 16 supported languages).
-- P0 Aspect ratio: 9:16, 1:1, 4:5, 16:9.
-- P0 A few curated style presets (font size, position, highlight colour, background dim/blur).
-- P1 Backgrounds for audio-only input: solid, gradient, nature/masjid stock, or user image.
-- P1 Branding: watermark or logo, channel handle (paid tiers).
-- P2 Custom templates saved to account.
+### 4.4 Export & share
+- P0 Render to MP4 (H.264/HEVC, 1080p) with the original audio.
+- P0 Save to Photos, and open the iOS share sheet (TikTok, Instagram, YouTube, WhatsApp).
+- P1 Export a caption file (SRT) alongside the video.
 
-### 3.5 Render & export
-- P0 Server-side render job. The user can leave the app and gets a push notification when the video is ready.
-- P0 Save to camera roll, plus native share sheet with quick targets for TikTok, Instagram Reels, YouTube Shorts, and WhatsApp.
-- P0 Export quality matches the plan (e.g. watermark or 720p on free).
-- P1 Caption-file export (SRT/VTT) for editing in other tools.
+### 4.5 Library
+- P0 Local project list with thumbnail and surah/ayah label. Reopen a project to re-edit or re-export.
+- P0 Delete a project.
 
-### 3.6 Library
-- P0 Project list with status: uploading, processing, ready, failed (with retry).
-- P1 Duplicate a project to try a new style or language.
-- P1 Delete originals and outputs.
-
-### 3.7 Monetisation
-- P0 Show remaining credits/quota.
-- P0 Upgrade through native in-app purchase (StoreKit / Play Billing), required by store rules for digital goods. Entitlements map to the web plans.
-- P0 Restore purchases.
+### Not in v1
+- Accounts or sign-in, payments, cloud sync
+- Translation languages other than English
+- Android (planned after iOS)
+- Multi-clip timeline editing, social feed
 
 ---
 
-## 4. Non-functional requirements
+## 5. Non-functional requirements
 
 | Area | Requirement |
 |---|---|
-| Platforms | iOS 16+ and Android 9+ (API 28+), phones first, tablet-tolerant |
-| Performance | Cold start under 2 s. Preview plays at 60 fps on mid-range devices. Upload uses chunked/resumable transfer. |
-| Reliability | Uploads and jobs survive app kill or backgrounding. Idempotent job creation. Clear error states with retry. |
-| Arabic rendering | Bundle the KFGQPC Hafs Uthmani font. Text comes from a verified Quran text source (e.g. Tanzil / Quran.com API), never OCR or AI-generated text. |
-| Accessibility | WCAG 2.2 AA contrast, Dynamic Type, VoiceOver/TalkBack labels, reduced-motion respect |
-| i18n | UI strings externalised. RTL layout mirroring. Translations for at least English, Arabic, Urdu, Indonesian, Turkish, French at launch. |
-| Privacy & security | HTTPS only. Tokens in Keychain/Keystore. Signed upload URLs. Data deletion from inside the app (App Store requirement). Privacy nutrition labels. |
-| Analytics | Privacy-respecting funnel events (import → detect → export → share), with no content captured |
-| Store compliance | Apple IAP for upgrades. Account deletion in-app. Sign in with Apple if other social logins exist. |
+| Platform | iOS 17+, iPhone first. A recent iPhone handles on-device AI; older devices get graceful fallbacks. |
+| Performance | Detection plus alignment finishes in 30 s or less for a 60 s clip on iPhone 13 or later. Export takes no more than real time. The editor preview runs at 60 fps. |
+| Text source | Quran text from Tanzil (Uthmani, verified), bundled and checksummed. English translation from a source licensed for our use, chosen in Design. |
+| Offline | Full flow works offline after install, apart from any optional downloadable models |
+| App size | Under 200 MB including the speech model. Larger models download optionally. |
+| Accessibility | Dynamic Type, VoiceOver labels, WCAG AA contrast in the app UI, Reduce Motion support |
+| Privacy | No recitation leaves the device in v1. No analytics that capture content. Accurate App Store privacy label. |
+| Reliability | Projects autosave. Export survives backgrounding, using a background task with resume if killed. |
 
 ---
 
-## 5. Proposed technical direction (to confirm in Design)
+## 6. Proposed technical direction (to confirm in Design)
 
-- **Client:** React Native + Expo (TypeScript). One codebase for iOS and Android, OTA updates, and a mature ecosystem for camera, media library, IAP, and push.
-  - Video preview: `expo-video` with a caption overlay timed to the alignment JSON.
-  - Uploads: background, resumable (tus or S3 multipart via presigned URLs).
-  - Payments: RevenueCat, to map store purchases to web plans.
-- **Backend:** reuse the AyahFlow API for auth, upload, detection, alignment, render jobs, and plans. Mobile needs:
-  - Job status via webhook → push (APNs/FCM)
-  - Presigned/resumable uploads
-  - A receipt-validation endpoint (or RevenueCat webhook) to grant entitlements
-- **Rendering stays server-side.** It keeps output identical to the web app and keeps phones cool. On-device preview only.
+**Native iOS: Swift + SwiftUI.** With caption rendering as the core of the product, native gives us the best text and motion control. It also lets one rendering path serve both preview and export.
 
----
+- **Caption engine:** Core Text / TextKit for Arabic shaping, with a custom animation timeline. The same layer tree drives the preview (AVPlayer plus a synchronised layer) and the export (`AVVideoCompositionCoreAnimationTool` or a Metal compositor). This satisfies the "preview is the export" principle.
+- **Speech recognition:** on-device Whisper via WhisperKit (Core ML), using a Quran-tuned Whisper model if its licence allows, otherwise multilingual Whisper. It produces rough Arabic text with timestamps.
+- **Identification:** fuzzy-match the normalised recognised text (harakat stripped) against the bundled Quran corpus to find the surah and ayah range.
+- **Alignment:** align the *verified* ayah words to the recognised words and timestamps, then refine word boundaries (forced alignment, e.g. CTC). Displayed text always comes from the corpus.
+- **Storage:** SwiftData for projects. Media goes in the app container.
+- **Backend:** none for v1. If on-device accuracy or speed falls short on older phones, a small optional server-side alignment service is the fallback.
 
-## 6. Out of scope (v1)
-- On-device AI detection or rendering
-- Full timeline video editor (multi-clip, transitions)
-- Social feed or community features
-- Desktop/tablet-optimised layouts
+> This replaces the v0.1 direction (React Native plus the existing AyahFlow backend). That direction no longer applies: there is no backend to reuse, the app is iOS-first, and caption quality is the top priority.
 
 ---
 
 ## 7. Success metrics
-- Time from import to exported video: median under 3 minutes for a 60 s clip
-- Detection accepted without edits in at least 90% of projects
-- Import → share conversion
-- Free → paid conversion, D7/D30 retention
-- Crash-free sessions of at least 99.5%
+- Detection is accepted without manual edits in at least 90% of projects.
+- A 60 s clip goes from import to exported video in a median of under 2 minutes.
+- At least 60% of exported videos are shared or saved through the share sheet.
+- Qualitative caption quality: a blind panel prefers our captions over common alternatives.
+- At least 99.5% of sessions are crash-free.
 
 ---
 
-## 8. Open questions (need answers before Design)
-1. **Ownership and API access:** do we own ayahflow.ai's backend? Is there an API the app can call, or do we need to build or mock one?
-2. **Plans:** what are the exact tiers, limits, and prices so they can be mirrored as IAP products?
-3. **Which 16 languages**, and is transliteration supported?
-4. **Brand assets:** logo, colours, fonts from the website.
-5. **Platform priority:** iOS and Android simultaneously, or iOS first?
-6. Is link import (YouTube/TikTok URL) part of the web product today?
+## 8. Risks & open items for Design
+1. **Alignment accuracy:** tajweed elongation (madd), repetitions and varied recitation styles make word timing hard. We should prototype detection and alignment early, on 20–30 real clips.
+2. **Licensing:** we need to confirm the Quran font licence (KFGQPC / Amiri), the English translation (public domain vs. licensed, e.g. Saheeh International requires permission) and the speech-model licence.
+3. **Brand:** we need a new app name, logo, colour palette and type system.
+4. **Device floor:** pick the oldest supported iPhone, based on on-device model speed.
