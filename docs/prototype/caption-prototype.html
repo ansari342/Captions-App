@@ -1,0 +1,718 @@
+<title>Rattil Caption Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Gloock&family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+/* Layout: a working studio first (live stage + controls), then the timing envelope, then brand and screens as reference sheets. */
+:root{
+  --bg:#EDF0EE; --surface:#E1E7E4; --raised:#F6F8F7; --fg:#11201E; --muted:#4D605B; --line:rgba(17,32,30,.14);
+  --accent:#9A6A22; --accent-2:#2E5E58; --on-accent:#FFFFFF;
+  --ink:#0D1615; --teal:#1F3D3A; --gold:#E2B66A; --mist:#A9BAB4; --bone:#EEF0EE; --ember:#D9734E;
+  --f-quran:'Amiri Quran','Amiri','Scheherazade New','Noto Naskh Arabic','Geeza Pro',serif;
+  --f-display:'Gloock','Iowan Old Style','Georgia',serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-serif:'Newsreader','Iowan Old Style','Georgia',serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1312; --surface:#13201F; --raised:#182826; --fg:#E6ECE9; --muted:#93A6A0; --line:rgba(230,236,233,.12);
+  --accent:#E2B66A; --accent-2:#7FB3AA; --on-accent:#0D1615; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1312; --surface:#13201F; --raised:#182826; --fg:#E6ECE9; --muted:#93A6A0; --line:rgba(230,236,233,.12);
+  --accent:#E2B66A; --accent-2:#7FB3AA; --on-accent:#0D1615; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:20px;padding-block:0 64px}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{text-wrap:balance;margin:0}
+h2{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3.2vw,34px);line-height:1.1}
+h3{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+p{margin:0}
+.lede{color:var(--muted);max-width:62ch}
+section{padding-block:56px 0;display:grid;gap:24px}
+.sec-head{display:grid;gap:8px}
+
+/* Masthead */
+.mast{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:28px 0}
+.brand{display:flex;align-items:center;gap:14px}
+.brand svg{width:44px;height:44px;color:var(--fg)}
+.wordmark{font-family:var(--f-display);font-size:30px;line-height:1}
+.wordmark-ar{font-family:var(--f-quran);font-size:26px;color:var(--accent);line-height:1}
+.mast-meta{font-size:13px;color:var(--muted)}
+.intro{display:grid;gap:12px;padding-block:36px 0}
+.intro h1{font-family:var(--f-display);font-weight:400;font-size:clamp(32px,5vw,52px);line-height:1.04;max-width:20ch}
+.intro .verse{font-family:var(--f-quran);font-size:24px;color:var(--accent);line-height:2}
+
+/* Studio */
+.studio{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+@media (max-width:920px){.studio{grid-template-columns:minmax(0,1fr)}}
+.stage-col{display:grid;gap:14px;min-width:0}
+.stage{height:clamp(440px,74vh,660px);background:var(--ink);border-radius:20px;display:grid;place-items:center;position:relative;overflow:hidden}
+.stage::after{content:"";position:absolute;inset:0;border-radius:20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);pointer-events:none}
+
+.frame{position:relative;overflow:hidden;border-radius:10px;container-type:inline-size;background:#000;--u:4px;--sy:50%}
+.frame canvas.footage{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scrim{position:absolute;inset:0;pointer-events:none;opacity:0}
+.st-sakinah .scrim{background:radial-gradient(ellipse 80% 24% at 50% var(--sy),rgba(5,10,10,.95),rgba(5,10,10,.55) 50%,rgba(5,10,10,0) 100%)}
+.st-mushaf .scrim{background:radial-gradient(ellipse 90% 40% at 50% var(--sy),rgba(5,10,10,.5),rgba(5,10,10,0) 100%)}
+.st-hairline .scrim{background:linear-gradient(to top,rgba(5,10,10,.9) 0%,rgba(5,10,10,.55) 28%,rgba(5,10,10,0) 52%)}
+.st-unfold .scrim{background:rgba(5,10,10,1)}
+
+.capbox{position:absolute;pointer-events:none}
+.chunk{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;visibility:hidden}
+.pos-upper .chunk{justify-content:flex-start}
+.pos-lower .chunk{justify-content:flex-end}
+.blk{position:relative;display:grid;gap:calc(1.4*var(--u));justify-items:center;max-width:100%;padding:calc(2.2*var(--u)) calc(3*var(--u))}
+.panel{position:absolute;inset:0;border-radius:calc(2.4*var(--u));background:rgba(13,22,21,.62);border:1px solid rgba(226,182,106,.28);
+  -webkit-backdrop-filter:blur(calc(1.4*var(--u)));backdrop-filter:blur(calc(1.4*var(--u)));opacity:0;display:none}
+.st-mushaf .panel{display:block}
+.ar{font-family:var(--f-quran);font-size:calc(var(--ars)*var(--u));line-height:1.95;color:#F3F5F2;direction:rtl;margin:0;position:relative;
+  text-shadow:0 calc(.25*var(--u)) calc(1.4*var(--u)) rgba(0,0,0,.5);will-change:opacity,transform,filter}
+.en{font-size:calc(var(--ens)*var(--u));line-height:1.4;color:#EEF0EE;margin:0;position:relative;max-width:34ch;
+  text-shadow:0 calc(.2*var(--u)) calc(1*var(--u)) rgba(0,0,0,.55);will-change:opacity,transform,filter}
+.en-serif-i .en{font-family:var(--f-serif);font-style:italic}
+.en-serif .en{font-family:var(--f-serif)}
+.en-sans .en{font-family:var(--f-body);font-weight:500}
+.en-sans-b .en{font-family:var(--f-body);font-weight:600;letter-spacing:.005em}
+.w{display:inline-block}
+.hl .w{opacity:.56;transition:opacity .18s ease-in-out,text-shadow .18s ease-in-out}
+.hl .w.p{opacity:.86}
+.hl .w.a{opacity:1;text-shadow:0 0 calc(1.4*var(--u)) rgba(244,222,170,.55),0 calc(.25*var(--u)) calc(1.4*var(--u)) rgba(0,0,0,.5)}
+.mk{display:inline-grid;place-items:center;width:1.2em;height:1.2em;border-radius:50%;border:max(1px,calc(.18*var(--u))) solid var(--mkc,#E2B66A);
+  font-size:.56em;line-height:1;color:var(--mkc,#E2B66A);vertical-align:.18em;margin-inline:.18em;padding-top:.08em}
+.st-hairline .frame,.st-hairline{--mkc:rgba(238,240,238,.7)}
+
+/* Safe-zone overlay */
+.safe{position:absolute;inset:0;pointer-events:none;display:none}
+.show-safe .safe{display:block}
+.safe .z{position:absolute;background:repeating-linear-gradient(135deg,rgba(217,115,78,.22) 0 6px,rgba(217,115,78,.08) 6px 12px);border:1px dashed rgba(217,115,78,.7)}
+.safe .z span{position:absolute;left:6px;top:4px;font:600 10px/1.2 var(--f-body);color:#F4C7B6;letter-spacing:.04em;text-transform:uppercase}
+.safe .box{position:absolute;border:1px dashed rgba(226,182,106,.8)}
+
+/* Transport */
+.transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center}
+.play{width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;cursor:pointer}
+.play:focus-visible,.seg button:focus-visible,.style-card:focus-visible,.toggle input:focus-visible+span{outline:2px solid var(--accent-2);outline-offset:2px}
+.scrub{position:relative;min-width:0}
+.scrub input{width:100%;accent-color:var(--accent);margin:0}
+.ticks{position:relative;height:8px;margin-bottom:2px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px;background:var(--muted);opacity:.55;transform:translateX(-1px)}
+.time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:9ch;text-align:right}
+.readout{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.readout b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* Controls */
+.controls{display:grid;gap:22px;background:var(--surface);border-radius:16px;padding:20px}
+.ctl{display:grid;gap:10px}
+.styles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.style-card{all:unset;box-sizing:border-box;cursor:pointer;border-radius:12px;padding:12px;background:var(--raised);border:1px solid var(--line);display:grid;gap:2px}
+.style-card b{font-family:var(--f-display);font-weight:400;font-size:19px;line-height:1.2}
+.style-card small{color:var(--muted);font-size:12px;line-height:1.35}
+.style-card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.seg{display:flex;background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{all:unset;box-sizing:border-box;flex:1;text-align:center;padding:7px 4px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.toggles{display:grid;gap:8px}
+.toggle{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;cursor:pointer}
+.toggle input{position:absolute;opacity:0;pointer-events:none}
+.toggle span{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.toggle span::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--raised);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .2s}
+.toggle input:checked+span{background:var(--accent)}
+.toggle input:checked+span::after{transform:translateX(16px)}
+.toggle.disabled{opacity:.45;cursor:not-allowed}
+.note{font-size:12.5px;color:var(--muted);line-height:1.45}
+
+/* Spec */
+.spec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+@media (max-width:820px){.spec{grid-template-columns:minmax(0,1fr)}}
+.diag-wrap{background:var(--surface);border-radius:16px;padding:18px;display:grid;gap:10px;min-width:0}
+.diag-wrap canvas{width:100%;height:170px;display:block}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);width:42%;padding-right:12px}
+td{font-variant-numeric:tabular-nums}
+.tbl{min-width:0;overflow-x:auto}
+.rules{display:grid;gap:10px;font-size:14px;color:var(--muted);max-width:62ch}
+.rules code{font-size:12.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--fg)}
+
+/* Brand */
+.brand-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+.sheet{background:var(--surface);border-radius:16px;padding:20px;display:grid;gap:14px;align-content:start;min-width:0}
+.icons{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.appicon{width:88px;height:88px;border-radius:20px;background:linear-gradient(180deg,#0D1615,#1F3D3A);display:grid;place-items:center;box-shadow:0 8px 24px rgba(13,22,21,.25)}
+.appicon svg{width:58px;height:58px;color:#EEF0EE}
+.swatches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sw{border-radius:10px;overflow:hidden;border:1px solid var(--line);font-size:12px}
+.sw div{height:46px}
+.sw p{padding:6px 8px;line-height:1.3;background:var(--raised)}
+.sw p span{display:block;color:var(--muted);font-variant-numeric:tabular-nums}
+.spec-type{display:grid;gap:12px}
+.spec-type .q{font-family:var(--f-quran);font-size:30px;line-height:1.9;direction:rtl}
+.spec-type .d{font-family:var(--f-display);font-size:30px;line-height:1.1}
+.spec-type .b{font-size:16px}
+.spec-type small{display:block;color:var(--muted);font-size:12px;font-family:var(--f-body)}
+
+/* Screens */
+.screens{display:flex;gap:18px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}
+.screen{flex:none;width:232px;scroll-snap-align:start;display:grid;gap:10px}
+.phone{height:480px;border-radius:30px;background:#0D1615;color:#EEF0EE;padding:18px 14px 14px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 10px 30px rgba(0,0,0,.18)}
+.phone .island{width:72px;height:20px;border-radius:10px;background:#000;margin:0 auto 4px;flex:none}
+.phone h4{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px}
+.phone .sub{font-size:11px;color:#A9BAB4}
+.cap{font-size:13px;color:var(--muted)}
+.cap b{color:var(--fg);font-weight:600;display:block;font-size:14px}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.thumb{aspect-ratio:9/13;border-radius:10px;display:grid;place-items:center;padding:6px;font-family:var(--f-quran);font-size:12px;line-height:1.8;text-align:center;direction:rtl}
+.thumb+.tl{font-size:10px}
+.tcell{display:grid;gap:4px}
+.tcell .tl{font-size:10px;color:#A9BAB4;line-height:1.3}
+.tcell .tl b{display:block;color:#EEF0EE;font-weight:600;font-size:11px}
+.cta{margin-top:auto;background:#E2B66A;color:#0D1615;border-radius:14px;padding:12px;text-align:center;font-weight:600;font-size:14px}
+.ghost{border:1px solid rgba(238,240,238,.2);border-radius:14px;padding:11px;text-align:center;font-size:14px}
+.wave{display:flex;align-items:center;gap:3px;height:70px;margin-top:70px}
+.wave i{flex:1;border-radius:2px;background:#2E4744}
+.wave i.on{background:#E2B66A}
+.card{background:#16302D;border-radius:16px;padding:14px;display:grid;gap:6px}
+.card .ar-n{font-family:var(--f-quran);font-size:26px;line-height:1.6;text-align:center}
+.card .ay{font-family:var(--f-quran);font-size:16px;line-height:2;text-align:center;direction:rtl;color:#DDE3E0}
+.chip{justify-self:center;font-size:10.5px;padding:3px 8px;border-radius:99px;background:rgba(226,182,106,.15);color:#E2B66A}
+.mini{aspect-ratio:9/16;height:250px;margin:0 auto;border-radius:10px;background:linear-gradient(180deg,#22314a,#6b4b5a 60%,#c8805a 78%,#1a1414);display:grid;place-items:center;padding:12px}
+.mini p{font-family:var(--f-quran);color:#F3F5F2;font-size:15px;line-height:1.8;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.mini small{display:block;font-family:var(--f-serif);font-style:italic;font-size:8.5px;opacity:.85;margin-top:4px;line-height:1.3}
+.tabs{display:flex;gap:4px;font-size:10.5px;color:#A9BAB4;justify-content:space-between}
+.tabs b{color:#E2B66A;font-weight:600}
+.chips{display:flex;gap:6px;overflow:hidden}
+.chips span{flex:none;font-family:var(--f-display);font-size:12px;padding:8px 10px;border-radius:10px;background:#16302D;border:1px solid transparent}
+.chips span.on{border-color:#E2B66A}
+.ring{width:110px;height:110px;margin:46px auto 6px}
+.targets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:9.5px;color:#A9BAB4;text-align:center}
+.targets i{display:block;width:36px;height:36px;border-radius:10px;background:#16302D;margin:0 auto 4px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);display:grid;gap:6px}
+@media (prefers-reduced-motion: reduce){.toggle span,.toggle span::after{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="brand">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 42V22C12 13.5 17.5 8.5 24 4.5C30.5 8.5 36 13.5 36 22V42" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 22.5h6M19 28.5h10M17 34.5h14" stroke="#E2B66A" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <span class="wordmark">Rattil</span><span class="wordmark-ar" lang="ar">رَتِّل</span>
+    </div>
+    <p class="mast-meta">Design prototype v0.1 · Captions for Quran recitation videos · iOS</p>
+  </header>
+
+  <div class="intro">
+    <p class="verse" lang="ar" dir="rtl">وَرَتِّلِ ٱلْقُرْءَانَ تَرْتِيلًا</p>
+    <h1>Captions that move at the reciter’s pace.</h1>
+    <p class="lede">This is a working model of the caption engine. Every style below runs on the same timing rules the iOS app will use. Chunks appear 0.2 s before they are recited, hand over without blank frames, and fade out during long pauses. The footage is simulated and there is no audio; word timings are modelled on a measured recitation of Al-Fatiha.</p>
+  </div>
+
+  <section id="studio" aria-labelledby="studio-h">
+    <div class="sec-head"><h2 id="studio-h">Caption studio</h2></div>
+    <div class="studio">
+      <div class="stage-col">
+        <div class="stage" id="stage">
+          <div class="frame" id="frame">
+            <canvas class="footage" id="footage"></canvas>
+            <div class="scrim" id="scrim"></div>
+            <div class="capbox" id="capbox"></div>
+            <div class="safe" id="safe"></div>
+          </div>
+        </div>
+        <div class="transport">
+          <button class="play" id="play" aria-label="Pause"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" id="playIcon"><rect x="4" y="3" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="10.5" y="3" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+          <div class="scrub"><div class="ticks" id="ticks"></div><input type="range" id="scrub" min="0" max="47" step="0.01" value="7.5" aria-label="Playback position"></div>
+          <span class="time" id="time">0:07.5</span>
+        </div>
+        <div class="readout"><span>Now: <b id="ro-ayah">Ayah 2</b></span><span>Scrim strength: <b id="ro-scrim">0.20</b></span><span>Footage brightness: <b id="ro-lum">0.30</b></span></div>
+      </div>
+
+      <div class="controls">
+        <div class="ctl"><h3>Style</h3>
+          <div class="styles" id="styles" role="group" aria-label="Caption style"></div>
+        </div>
+        <div class="ctl"><h3>Aspect ratio</h3>
+          <div class="seg" id="aspect" role="group" aria-label="Aspect ratio">
+            <button id="ar-916" data-v="9:16" aria-pressed="true">9:16</button><button id="ar-45" data-v="4:5" aria-pressed="false">4:5</button><button id="ar-11" data-v="1:1" aria-pressed="false">1:1</button><button id="ar-169" data-v="16:9" aria-pressed="false">16:9</button>
+          </div>
+        </div>
+        <div class="ctl"><h3>Footage</h3>
+          <div class="seg" id="scene" role="group" aria-label="Footage">
+            <button id="sc-dusk" data-v="dusk" aria-pressed="true">Dusk</button><button id="sc-day" data-v="day" aria-pressed="false">Daylight</button><button id="sc-audio" data-v="audio" aria-pressed="false">Audio only</button>
+          </div>
+          <p class="note">Use Daylight to see the scrim adjust to bright footage. Audio only shows the background the app supplies for audio-only recordings.</p>
+        </div>
+        <div class="ctl"><h3>Position</h3>
+          <div class="seg" id="position" role="group" aria-label="Caption position">
+            <button id="pos-upper" data-v="upper" aria-pressed="false">Upper</button><button id="pos-center" data-v="center" aria-pressed="true">Centre</button><button id="pos-lower" data-v="lower" aria-pressed="false">Lower</button>
+          </div>
+        </div>
+        <div class="ctl"><h3>Text</h3>
+          <div class="toggles">
+            <label class="toggle" for="t-en">English translation<input type="checkbox" id="t-en" checked><span></span></label>
+            <label class="toggle" for="t-hl" id="t-hl-row">Word highlight<input type="checkbox" id="t-hl" checked><span></span></label>
+            <label class="toggle" for="t-safe">Show platform safe zones<input type="checkbox" id="t-safe"><span></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="timing" aria-labelledby="timing-h">
+    <div class="sec-head"><h2 id="timing-h">Timing and motion</h2>
+      <p class="lede">The upper lane plots how visible each caption is over time, with the current style’s easing. The lower lane shows the recited words. Ayahs 4→5 are separated by a long pause, so that caption fades out instead of handing over.</p></div>
+    <div class="spec">
+      <div class="diag-wrap">
+        <canvas id="diag" aria-label="Caption visibility over time compared with recited words" role="img"></canvas>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Caption on screen (Arabic opacity)</span><span><i style="background:var(--accent-2)"></i>Word recited</span></div>
+      </div>
+      <div class="tbl">
+        <table id="specTable"><tbody></tbody></table>
+      </div>
+    </div>
+    <div class="rules">
+      <p><code>show = first word − 0.20 s</code>. A caption arrives just ahead of its first word, so viewers read along instead of chasing the audio.</p>
+      <p><code>handover = next show − 0.18 s</code>. The outgoing caption starts fading 0.18 s before the next one enters. The two are never both at full strength, and there is no empty frame between them.</p>
+      <p>Silence longer than 1.5 s means the caption holds for 0.8 s after the last word, then fades out. Every caption is fully visible for at least 1.2 s.</p>
+    </div>
+  </section>
+
+  <section id="brand" aria-labelledby="brand-h">
+    <div class="sec-head"><h2 id="brand-h">Brand</h2>
+      <p class="lede">Rattil comes from Al-Muzzammil 73:4, “and recite the Qur’an with measured recitation.” The mark is a mihrab arch with lines of text rising inside it. Lamp Gold is the only accent colour.</p></div>
+    <div class="brand-grid">
+      <div class="sheet"><h3>Mark and app icon</h3>
+        <div class="icons">
+          <div class="appicon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 42V22C12 13.5 17.5 8.5 24 4.5C30.5 8.5 36 13.5 36 22V42" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 22.5h6M19 28.5h10M17 34.5h14" stroke="#E2B66A" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+          <div><span class="wordmark">Rattil</span><br><span class="wordmark-ar" lang="ar">رَتِّل</span></div>
+        </div>
+      </div>
+      <div class="sheet"><h3>Palette</h3>
+        <div class="swatches">
+          <div class="sw"><div style="background:#0D1615"></div><p>Night Ink<span>#0D1615</span></p></div>
+          <div class="sw"><div style="background:#1F3D3A"></div><p>Deep Teal<span>#1F3D3A</span></p></div>
+          <div class="sw"><div style="background:#E2B66A"></div><p>Lamp Gold<span>#E2B66A</span></p></div>
+          <div class="sw"><div style="background:#A9BAB4"></div><p>Mist<span>#A9BAB4</span></p></div>
+          <div class="sw"><div style="background:#EEF0EE"></div><p>Bone<span>#EEF0EE</span></p></div>
+          <div class="sw"><div style="background:#D9734E"></div><p>Ember<span>Errors only</span></p></div>
+        </div>
+      </div>
+      <div class="sheet"><h3>Type</h3>
+        <div class="spec-type">
+          <div><p class="q" lang="ar">ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ</p><small>Amiri Quran · all scripture</small></div>
+          <div><p class="d">Surah Al-Fatiha</p><small>Gloock · titles, used sparingly</small></div>
+          <div><p class="b">Pick a recitation from your Photos to begin.</p><small>Hanken Grotesk · interface</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens" aria-labelledby="screens-h">
+    <div class="sec-head"><h2 id="screens-h">Key screens</h2>
+      <p class="lede">The app has three decisions: pick a clip, confirm the ayahs, export. The editor opens with Sakinah applied, so most people never need to change anything.</p></div>
+    <div class="screens">
+      <div class="screen">
+        <div class="phone"><div class="island"></div>
+          <h4>Rattil</h4><p class="sub">4 videos</p>
+          <div class="thumbs">
+            <div class="tcell"><div class="thumb" style="background:linear-gradient(180deg,#22314a,#c8805a)">بِسْمِ ٱللَّهِ</div><p class="tl"><b>Al-Fatiha</b>Ayahs 1–7</p></div>
+            <div class="tcell"><div class="thumb" style="background:linear-gradient(180deg,#0D1615,#1F3D3A)">قُلْ هُوَ ٱللَّهُ أَحَدٌ</div><p class="tl"><b>Al-Ikhlas</b>Ayahs 1–4</p></div>
+            <div class="tcell"><div class="thumb" style="background:linear-gradient(180deg,#5b7f99,#d9e6ee)">وَٱلْعَصْرِ</div><p class="tl"><b>Al-Asr</b>Ayahs 1–3</p></div>
+            <div class="tcell"><div class="thumb" style="background:linear-gradient(180deg,#2a2233,#6a5a48)">ٱلرَّحْمَٰنُ</div><p class="tl"><b>Ar-Rahman</b>Ayahs 1–13</p></div>
+          </div>
+          <div class="cta">New video</div>
+        </div>
+        <p class="cap"><b>Library</b>Projects autosave. The main button sits within thumb reach.</p>
+      </div>
+      <div class="screen">
+        <div class="phone"><div class="island"></div>
+          <div class="wave" id="miniWave"></div>
+          <p style="text-align:center;font-size:15px;margin-top:18px">Finding the surah…</p>
+          <p class="sub" style="text-align:center">Listening · Finding · Matching words</p>
+          <div class="ghost" style="margin-top:auto">Cancel</div>
+        </div>
+        <p class="cap"><b>Detecting</b>Runs on the phone. Usually takes 10 to 30 seconds.</p>
+      </div>
+      <div class="screen">
+        <div class="phone"><div class="island"></div>
+          <p class="sub" style="text-align:center;margin-top:24px">Is this right?</p>
+          <div class="card">
+            <p class="ar-n" lang="ar">ٱلْفَاتِحَة</p>
+            <p style="text-align:center;font-size:13px">Al-Fatiha · Ayahs 1–7</p>
+            <p class="ay" lang="ar">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+          </div>
+          <div style="margin-top:auto;display:grid;gap:8px"><div class="cta" style="margin:0">Looks right</div><div class="ghost">Change</div></div>
+        </div>
+        <p class="cap"><b>Confirm</b>The AI suggests and you confirm. If confidence is low, the surah picker opens straight away.</p>
+      </div>
+      <div class="screen">
+        <div class="phone"><div class="island"></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span class="sub">Al-Fatiha</span><span style="color:#E2B66A;font-weight:600">Export</span></div>
+          <div class="mini"><p lang="ar">ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ<small>Praise be to Allah, Lord of the Worlds,</small></p></div>
+          <div class="tabs"><b>Style</b><span>Format</span><span>Text</span><span>Timing</span></div>
+          <div class="chips"><span class="on">Sakinah</span><span>Mushaf</span><span>Hairline</span><span>Unfold</span></div>
+        </div>
+        <p class="cap"><b>Editor</b>Live preview drawn by the same renderer as the export.</p>
+      </div>
+      <div class="screen">
+        <div class="phone"><div class="island"></div>
+          <svg class="ring" viewBox="0 0 110 110" aria-hidden="true"><circle cx="55" cy="55" r="48" fill="none" stroke="#1F3D3A" stroke-width="6"/><circle cx="55" cy="55" r="48" fill="none" stroke="#E2B66A" stroke-width="6" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="0" transform="rotate(-90 55 55)"/><path d="M40 56l10 10 21-22" fill="none" stroke="#EEF0EE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p style="text-align:center;font-size:15px">Saved to Photos</p>
+          <p class="sub" style="text-align:center">1080 × 1920 · 0:47</p>
+          <div class="targets" style="margin-top:auto"><span><i></i>TikTok</span><span><i></i>Instagram</span><span><i></i>YouTube</span><span><i></i>WhatsApp</span></div>
+          <div class="ghost">More…</div>
+        </div>
+        <p class="cap"><b>Export</b>Saves to Photos, then offers direct sharing.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>Quran text: Tanzil Uthmani (verbatim). English in this prototype: Marmaduke Pickthall (1930, public domain). The final translation is still to be decided.</p>
+    <p>Specification: docs/02-design.md. Measurements are in U, where 1U = 1% of min(frame width, 0.75 × frame height).</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+const AYAHS = [
+  {n:1, parts:[{ar:"بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", en:"In the name of Allah, the Beneficent, the Merciful.", t:[0.6,5.2]}]},
+  {n:2, parts:[{ar:"ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ", en:"Praise be to Allah, Lord of the Worlds,", t:[6.5,10.6]}]},
+  {n:3, parts:[{ar:"ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", en:"The Beneficent, the Merciful.", t:[11.7,14.4]}]},
+  {n:4, parts:[{ar:"مَٰلِكِ يَوْمِ ٱلدِّينِ", en:"Master of the Day of Judgment,", t:[15.4,18.4]}]},
+  {n:5, parts:[{ar:"إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", en:"Thee (alone) we worship; Thee (alone) we ask for help.", t:[20.6,25.6]}]},
+  {n:6, parts:[{ar:"ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ", en:"Show us the straight path,", t:[26.8,31.0]}]},
+  {n:7, parts:[
+    {ar:"صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ", en:"The path of those whom Thou hast favoured;", t:[32.3,37.0]},
+    {ar:"غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ", en:"Not (the path) of those who earn Thine anger nor of those who go astray.", t:[37.5,44.6]}]},
+];
+const DUR = 47;
+const LEAD=0.20, HOLD=0.80, GAP_LONG=1.50, MIN_SHOW=1.20, HANDOFF=0.18, WORD_GAP=0.08, ANTICIPATE=0.06;
+const STYLES = {
+  sakinah:{name:"Sakinah", mood:"Serene, cinematic. The default.", ar:7.4, en:3.6, enFont:"serif-i", pos:"center", legib:"Adaptive radial scrim + soft shadow",
+    entry:.52, exit:.38, rise:2.2, blurIn:1.4, blurOut:.8, drift:.8, enDelay:.14, highlight:true, reveal:false},
+  mushaf:{name:"Mushaf", mood:"Classic, framed panel, gold markers.", ar:6.6, en:3.3, enFont:"serif", pos:"center", legib:"Translucent ink panel with background blur",
+    entry:.42, exit:.42, rise:0, blurIn:0, blurOut:0, drift:0, enDelay:0, highlight:false, reveal:false},
+  hairline:{name:"Hairline", mood:"Minimal lower third, documentary.", ar:5.2, en:3.0, enFont:"sans", pos:"lower", legib:"Adaptive bottom gradient + shadow",
+    entry:.26, exit:.22, rise:0, blurIn:0, blurOut:0, drift:0, enDelay:.08, highlight:false, reveal:false},
+  unfold:{name:"Unfold", mood:"Bold. Each word arrives as it is recited.", ar:9.0, en:3.4, enFont:"sans-b", pos:"center", legib:"Full-frame dim (35% or more)",
+    entry:.30, exit:.36, rise:0, blurIn:0, blurOut:.6, drift:0, enDelay:0, highlight:false, reveal:true},
+};
+const ARD = "٠١٢٣٤٥٦٧٨٩";
+const toAr = n => String(n).replace(/\d/g, d => ARD[d]);
+const strip = s => s.replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, "");
+const clamp = (x,a=0,b=1) => Math.min(b, Math.max(a, x));
+const easeOut = x => 1 - Math.pow(1 - x, 4);
+const easeIn = x => x * x * x;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const state = { style:"sakinah", aspect:"9:16", scene:"dusk", pos:"center", en:true, hl:true, safe:false, t:7.5, playing:!reduced, lum:.3, scrimA:.2 };
+
+// ---- Build chunks with word timings ----
+const chunks = [];
+for (const a of AYAHS) a.parts.forEach((p, i) => {
+  const words = p.ar.split(" ");
+  const weights = words.map((w, j) => strip(w).length + 1.5 + (j === words.length - 1 ? strip(w).length * .7 : 0));
+  const total = weights.reduce((s, x) => s + x, 0);
+  const span = (p.t[1] - p.t[0]) - WORD_GAP * (words.length - 1);
+  let t = p.t[0];
+  const ws = words.map((w, j) => { const d = span * weights[j] / total; const o = {text:w, t0:t, t1:t + d}; t += d + WORD_GAP; return o; });
+  chunks.push({ayah:a.n, endsAyah:i === a.parts.length - 1, words:ws, en:p.en});
+});
+
+function buildTimeline(st) {
+  chunks.forEach(c => c.show = c.words[0].t0 - LEAD);
+  chunks.forEach((c, i) => {
+    const next = chunks[i + 1], lastT1 = c.words[c.words.length - 1].t1;
+    const gap = next ? next.words[0].t0 - lastT1 : Infinity;
+    c.crossfade = gap < GAP_LONG;
+    c.hide = c.crossfade ? next.show - HANDOFF : lastT1 + (next ? HOLD : 1.4);
+    const minHide = c.show + st.entry + MIN_SHOW;
+    if (c.hide < minHide) { c.hide = minHide; if (next && c.crossfade) next.show = Math.max(next.show, c.hide + HANDOFF); }
+    if (next && !c.crossfade && c.hide + st.exit > next.show) c.hide = next.show - HANDOFF;
+  });
+}
+
+// Opacity/transform state for a chunk at time t
+function chunkState(c, st, t) {
+  const e = easeOut(clamp((t - c.show) / st.entry));
+  const x = easeIn(clamp((t - c.hide) / st.exit));
+  const enStart = st.reveal ? c.words[c.words.length - 1].t0 : c.show + st.enDelay;
+  const ee = easeOut(clamp((t - enStart) / Math.max(st.entry, .3)));
+  return { vis: t >= c.show && t <= c.hide + st.exit, ar: e * (1 - x), e, x, en: ee * (1 - x), ee };
+}
+
+// ---- DOM ----
+const $ = id => document.getElementById(id);
+const frame = $("frame"), capbox = $("capbox"), scrim = $("scrim"), canvas = $("footage"), ctx = canvas.getContext("2d", {willReadFrequently:true});
+chunks.forEach(c => {
+  const el = document.createElement("div"); el.className = "chunk";
+  const blk = document.createElement("div"); blk.className = "blk";
+  const panel = document.createElement("div"); panel.className = "panel";
+  const ar = document.createElement("p"); ar.className = "ar"; ar.lang = "ar"; ar.dir = "rtl";
+  c.wordEls = c.words.map((w, i) => { const s = document.createElement("span"); s.className = "w"; s.textContent = w.text; ar.appendChild(s); if (i < c.words.length - 1) ar.appendChild(document.createTextNode(" ")); return s; });
+  if (c.endsAyah) { ar.appendChild(document.createTextNode(" ")); const mk = document.createElement("span"); mk.className = "mk"; mk.textContent = toAr(c.ayah); ar.appendChild(mk); c.mk = mk; }
+  const en = document.createElement("p"); en.className = "en"; en.lang = "en"; en.textContent = c.en;
+  blk.append(panel, ar, en); el.appendChild(blk); capbox.appendChild(el);
+  Object.assign(c, {el, panel, arEl:ar, enEl:en, wState:c.words.map(() => "")});
+});
+
+// Style cards
+const stylesEl = $("styles");
+Object.entries(STYLES).forEach(([k, s]) => {
+  const b = document.createElement("button"); b.className = "style-card"; b.id = "style-" + k; b.dataset.v = k;
+  b.setAttribute("aria-pressed", k === state.style); b.innerHTML = `<b>${s.name}</b><small>${s.mood}</small>`;
+  stylesEl.appendChild(b);
+});
+function wireSeg(id, key, after) {
+  $(id).addEventListener("click", ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    state[key] = b.dataset.v;
+    $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    after && after();
+  });
+}
+wireSeg("styles", "style", applyStyle);
+wireSeg("aspect", "aspect", layout);
+wireSeg("scene", "scene", () => { state.lumInit = true; });
+wireSeg("position", "pos", applyPos);
+$("t-en").addEventListener("change", e => { state.en = e.target.checked; });
+$("t-hl").addEventListener("change", e => { state.hl = e.target.checked; applyStyle(); });
+$("t-safe").addEventListener("change", e => { state.safe = e.target.checked; frame.classList.toggle("show-safe", state.safe); });
+
+const playBtn = $("play"), playIcon = $("playIcon");
+function setPlaying(p) {
+  state.playing = p; playBtn.setAttribute("aria-label", p ? "Pause" : "Play");
+  playIcon.innerHTML = p ? '<rect x="4" y="3" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="10.5" y="3" width="3.5" height="12" rx="1" fill="currentColor"/>'
+                         : '<path d="M5 3.2v11.6c0 .6.7 1 1.2.6l8.6-5.8c.4-.3.4-.9 0-1.2L6.2 2.6C5.7 2.2 5 2.6 5 3.2z" fill="currentColor"/>';
+}
+playBtn.addEventListener("click", () => setPlaying(!state.playing));
+const scrub = $("scrub");
+scrub.max = DUR;
+scrub.addEventListener("input", () => { state.t = +scrub.value; });
+scrub.addEventListener("pointerdown", () => { state.wasPlaying = state.playing; setPlaying(false); });
+scrub.addEventListener("pointerup", () => { if (state.wasPlaying) setPlaying(true); });
+
+function applyStyle() {
+  const st = STYLES[state.style];
+  frame.className = "frame st-" + state.style + " en-" + st.enFont + " pos-" + state.pos + (state.safe ? " show-safe" : "") + (st.highlight && state.hl ? " hl" : "");
+  frame.style.setProperty("--ars", st.ar); frame.style.setProperty("--ens", st.en);
+  const hlRow = $("t-hl-row"), hl = $("t-hl");
+  const fixed = st.reveal || !st.highlight;
+  hl.disabled = fixed; hlRow.classList.toggle("disabled", fixed);
+  hl.checked = st.reveal ? true : (st.highlight ? state.hl : false);
+  chunks.forEach(c => { c.wState = c.words.map(() => ""); c.wordEls.forEach(w => { w.className = "w"; w.style.cssText = ""; }); });
+  buildTimeline(st); renderTicks(); renderSpec(); buildEnvelopes();
+}
+function applyPos() {
+  $("position").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === state.pos));
+  applyStyle(); layout();
+}
+// Picking a style moves captions to that style's default position
+$("styles").addEventListener("click", ev => { const b = ev.target.closest("button"); if (b) { state.pos = STYLES[b.dataset.v].pos; applyPos(); } });
+
+// ---- Layout: fit frame in stage, caption-safe box ----
+const ASPECTS = {"9:16":[9,16], "4:5":[4,5], "1:1":[1,1], "16:9":[16,9]};
+function layout() {
+  const stage = $("stage"), [aw, ah] = ASPECTS[state.aspect];
+  const pad = 28, sw = stage.clientWidth - pad * 2, sh = stage.clientHeight - pad * 2;
+  let w = sw, h = w * ah / aw; if (h > sh) { h = sh; w = h * aw / ah; }
+  frame.style.width = w + "px"; frame.style.height = h + "px";
+  const u = Math.min(w, .75 * h) / 100; frame.style.setProperty("--u", u + "px"); state.u = u;
+  const portrait = state.aspect === "9:16";
+  const ins = portrait ? {l:8, r:state.pos === "lower" ? 14 : 8, t:12, b:22} : {l:6, r:6, t:8, b:8};
+  Object.assign(capbox.style, {left:ins.l + "%", right:ins.r + "%", top:ins.t + "%", bottom:ins.b + "%"});
+  state.ins = ins;
+  canvas.width = 120; canvas.height = Math.round(120 * ah / aw);
+  const safe = $("safe");
+  safe.innerHTML = portrait
+    ? `<div class="z" style="left:0;right:0;top:0;height:12%"><span>Status and app bar</span></div>
+       <div class="z" style="left:0;right:0;bottom:0;height:22%"><span>Username and description</span></div>
+       <div class="z" style="right:0;width:14%;top:40%;bottom:22%"><span style="writing-mode:vertical-rl">Action rail</span></div>
+       <div class="box" style="left:${ins.l}%;right:${ins.r}%;top:${ins.t}%;bottom:${ins.b}%"></div>`
+    : `<div class="box" style="left:6%;right:6%;top:8%;bottom:8%"></div>`;
+}
+addEventListener("resize", () => { layout(); drawDiag(); });
+
+// ---- Footage scenes (simulated) ----
+function scene(t) {
+  const W = canvas.width, H = canvas.height, c = ctx;
+  if (state.scene === "dusk") {
+    let g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0E1B2E"); g.addColorStop(.45, "#3A3452"); g.addColorStop(.72, "#B9765A"); g.addColorStop(.8, "#E0A36E"); g.addColorStop(.81, "#1A1418"); g.addColorStop(1, "#0B0C10");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const ox = Math.sin(t * .07) * W * .02;
+    g = c.createRadialGradient(W * .55 + ox, H * .76, 0, W * .55 + ox, H * .76, W * .7);
+    g.addColorStop(0, "rgba(255,196,130,.55)"); g.addColorStop(1, "rgba(255,196,130,0)");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 7; i++) {
+      const x = ((i * 37 + t * (1.2 + i * .2)) % (W + 20)) - 10, y = H * (.2 + .07 * i) + Math.sin(t * .3 + i) * 3;
+      const r = 4 + (i % 3) * 2; const og = c.createRadialGradient(x, y, 0, x, y, r);
+      og.addColorStop(0, "rgba(255,226,170,.35)"); og.addColorStop(1, "rgba(255,226,170,0)"); c.fillStyle = og; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    c.fillStyle = "#0A0B0F";
+    c.beginPath(); c.arc(W * .4 + ox, H * .81, W * .15, Math.PI, 0); c.fill();
+    c.fillRect(W * .4 + ox - 1, H * .81 - W * .15 - 6, 2, 6);
+    c.fillRect(W * .68 + ox, H * .55, W * .04, H * .27);
+    c.beginPath(); c.moveTo(W * .68 + ox - 1, H * .55); c.lineTo(W * .7 + ox, H * .5); c.lineTo(W * .72 + ox + 1, H * .55); c.fill();
+  } else if (state.scene === "day") {
+    let g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#5E9BD6"); g.addColorStop(.55, "#BFDDF3"); g.addColorStop(.78, "#F1F5F8"); g.addColorStop(.79, "#EDE5D3"); g.addColorStop(1, "#D9CDB4");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 6; i++) {
+      const x = ((i * 47 + t * (1.5 + i * .3)) % (W + 60)) - 30, y = H * (.18 + .09 * i);
+      const r = 18 + (i % 3) * 8; const cg = c.createRadialGradient(x, y, 0, x, y, r);
+      cg.addColorStop(0, "rgba(255,255,255,.95)"); cg.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = cg; c.beginPath(); c.ellipse(x, y, r * 1.6, r * .7, 0, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = "#F7F3EA"; c.fillRect(W * .15, H * .6, W * .5, H * .19);
+    c.beginPath(); c.arc(W * .4, H * .6, W * .16, Math.PI, 0); c.fill();
+  } else {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#0D1615"); g.addColorStop(1, "#1F3D3A");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const blobs = [[.3, .3, "rgba(226,182,106,.22)"], [.7, .7, "rgba(127,179,170,.18)"]];
+    blobs.forEach(([bx, by, col], i) => {
+      const x = W * (bx + .12 * Math.sin(t * .11 + i * 2)), y = H * (by + .08 * Math.cos(t * .09 + i)), r = W * .7;
+      const bg = c.createRadialGradient(x, y, 0, x, y, r); bg.addColorStop(0, col); bg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+    });
+  }
+}
+let lastSample = 0;
+function sampleLum(now, dt) {
+  if (now - lastSample < 250 && !state.lumInit) return;
+  lastSample = now;
+  const W = canvas.width, H = canvas.height, cy = {upper:.3, center:.5, lower:.68}[state.pos];
+  const y0 = Math.max(0, Math.floor(H * (cy - .12))), h = Math.max(1, Math.floor(H * .24));
+  const d = ctx.getImageData(Math.floor(W * .1), y0, Math.floor(W * .8), Math.min(h, H - y0)).data;
+  let s = 0; for (let i = 0; i < d.length; i += 4) s += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255;
+  const target = s / (d.length / 4);
+  const k = state.lumInit ? 1 : 1 - Math.exp(-.25 / .6);
+  state.lum += (target - state.lum) * k; state.lumInit = false;
+}
+
+// ---- Render captions at time t ----
+function render(t) {
+  const st = STYLES[state.style];
+  const u = state.u || 4;
+  let vis = 0, cur = null;
+  for (const c of chunks) {
+    const s = chunkState(c, st, t);
+    if (!s.vis) { if (c.on) { c.el.style.visibility = "hidden"; c.on = false; } continue; }
+    if (!c.on) { c.el.style.visibility = "visible"; c.on = true; }
+    vis = Math.max(vis, s.ar); if (s.ar > .5 || (!cur && s.ar > 0)) cur = c;
+    const y = st.rise * (1 - s.e) - st.drift * s.x, b = st.blurIn * (1 - s.e) + st.blurOut * s.x;
+    c.arEl.style.opacity = st.reveal ? (1 - s.x) : s.ar;
+    c.arEl.style.transform = `translateY(${y * u}px)`;
+    c.arEl.style.filter = b > .01 ? `blur(${b * u}px)` : "none";
+    const ey = st.rise * (1 - s.ee) - st.drift * s.x, eb = st.blurIn * (1 - s.ee) + st.blurOut * s.x;
+    c.enEl.style.display = state.en ? "" : "none";
+    c.enEl.style.opacity = s.en * (state.style === "hairline" ? .75 : .82);
+    c.enEl.style.transform = `translateY(${ey * u}px)`;
+    c.enEl.style.filter = eb > .01 ? `blur(${eb * u}px)` : "none";
+    if (state.style === "mushaf") c.panel.style.opacity = s.ar;
+    // words
+    c.words.forEach((w, i) => {
+      const el = c.wordEls[i];
+      if (st.reveal) {
+        const p = easeOut(clamp((t - (w.t0 - .08)) / .32));
+        el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * .9 * u}px)`; el.style.filter = p < .99 ? `blur(${(1 - p) * .7 * u}px)` : "none";
+      } else if (st.highlight && state.hl) {
+        const ns = t < w.t0 - ANTICIPATE ? "" : t <= w.t1 ? "a" : "p";
+        if (ns !== c.wState[i]) { c.wState[i] = ns; el.className = "w" + (ns ? " " + ns : ""); }
+      }
+    });
+    if (st.reveal && c.mk) { const p = easeOut(clamp((t - c.words[c.words.length - 1].t1 + .1) / .3)); c.mk.style.opacity = p; }
+  }
+  // adaptive legibility
+  const lum = state.lum;
+  let a;
+  if (state.style === "unfold") a = Math.max(.35, clamp(.2 + .9 * (lum - .3), .2, .62));
+  else if (state.style === "mushaf") a = clamp(.15 + .7 * (lum - .3), .1, .55);
+  else a = clamp(.2 + .9 * (lum - .3), .2, .72);
+  state.scrimA += (a - state.scrimA) * .08;
+  scrim.style.opacity = state.scrimA * vis;
+  frame.style.setProperty("--sy", {upper:"30%", center:"50%", lower:"74%"}[state.pos]);
+  if (state.style === "mushaf") chunks.forEach(c => { if (c.on) c.panel.style.background = `rgba(13,22,21,${clamp(.5 + .6 * (lum - .3), .5, .82).toFixed(3)})`; });
+  $("ro-ayah").textContent = cur ? "Ayah " + cur.ayah : "None (pause)";
+  $("ro-scrim").textContent = (state.scrimA * vis).toFixed(2);
+  $("ro-lum").textContent = lum.toFixed(2);
+}
+
+// ---- Timeline ticks & spec ----
+function renderTicks() {
+  $("ticks").innerHTML = chunks.map(c => `<i style="left:${(c.show / DUR * 100).toFixed(2)}%"></i>`).join("");
+}
+function renderSpec() {
+  const s = STYLES[state.style];
+  const rows = [
+    ["Style", s.name],
+    ["Arabic size", s.ar + " U, Amiri Quran"],
+    ["English", {"serif-i":"Newsreader italic", serif:"Newsreader", sans:"Hanken Grotesk 500", "sans-b":"Hanken Grotesk 600"}[s.enFont] + ", " + s.en + " U"],
+    ["Entry", s.reveal ? "Per word, as recited: fade, rise 0.9 U, unblur, 320 ms" : `${Math.round(s.entry * 1000)} ms, ease-out` + (s.rise ? `, rise ${s.rise} U` : "") + (s.blurIn ? `, blur ${s.blurIn} U → 0` : "")],
+    ["Exit", `${Math.round(s.exit * 1000)} ms, ease-in` + (s.blurOut ? `, blur → ${s.blurOut} U` : "") + (s.drift ? `, drift up ${s.drift} U` : "")],
+    ["English delay", s.reveal ? "Appears with the last word" : `+${Math.round(s.enDelay * 1000)} ms`],
+    ["Word highlight", s.reveal ? "Built in (reveal)" : s.highlight ? "Active 100%, upcoming 56%, recited 86%, 180 ms" : "Off"],
+    ["Legibility", s.legib],
+    ["Default position", {center:"Centre", lower:"Lower", upper:"Upper"}[s.pos]],
+  ];
+  $("specTable").tBodies[0].innerHTML = rows.map(([k, v]) => `<tr><th scope="row">${k}</th><td>${v}</td></tr>`).join("");
+}
+
+// ---- Diagram ----
+const diag = $("diag"), dctx = diag.getContext("2d");
+let envelopes = [];
+function buildEnvelopes() {
+  const st = STYLES[state.style];
+  envelopes = chunks.map(c => {
+    const t0 = c.show, t1 = c.hide + st.exit, pts = [];
+    for (let i = 0; i <= 80; i++) { const t = t0 + (t1 - t0) * i / 80; const s = chunkState(c, st, t); pts.push([t, st.reveal ? Math.max(s.ar * .35, (1 - s.x) * easeOut(clamp((t - c.words[0].t0 + .08) / .32))) : s.ar]); }
+    return pts;
+  });
+}
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+let colors = {};
+function readColors() { colors = {accent:cssVar("--accent"), accent2:cssVar("--accent-2"), muted:cssVar("--muted"), line:cssVar("--line"), fg:cssVar("--fg")}; }
+function drawDiag() {
+  const dpr = devicePixelRatio || 1, W = diag.clientWidth, H = diag.clientHeight;
+  if (diag.width !== Math.round(W * dpr)) { diag.width = Math.round(W * dpr); diag.height = Math.round(H * dpr); }
+  const c = dctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const L = 4, R = W - 4, x = t => L + (R - L) * t / DUR;
+  const top = 8, laneH = 92, wordY = top + laneH + 18, axisY = H - 6;
+  c.font = "11px " + getComputedStyle(document.body).fontFamily; c.textBaseline = "alphabetic";
+  for (let s = 0; s <= DUR; s += 5) {
+    c.strokeStyle = colors.line; c.lineWidth = 1; c.beginPath(); c.moveTo(Math.round(x(s)) + .5, top); c.lineTo(Math.round(x(s)) + .5, wordY + 14); c.stroke();
+    c.fillStyle = colors.muted; c.textAlign = s === 0 ? "left" : "center"; c.fillText(s + "s", x(s), axisY);
+  }
+  envelopes.forEach((pts, i) => {
+    c.beginPath(); c.moveTo(x(pts[0][0]), top + laneH);
+    pts.forEach(([t, o]) => c.lineTo(x(t), top + laneH - o * (laneH - 6)));
+    c.lineTo(x(pts[pts.length - 1][0]), top + laneH); c.closePath();
+    c.globalAlpha = i % 2 ? .38 : .58; c.fillStyle = colors.accent; c.fill();
+    c.globalAlpha = 1; c.strokeStyle = colors.accent; c.lineWidth = 1.25; c.stroke();
+  });
+  c.fillStyle = colors.accent2;
+  chunks.forEach(ch => ch.words.forEach(w => { const a = x(w.t0), b = x(w.t1); c.beginPath(); c.roundRect ? c.roundRect(a, wordY, Math.max(1.5, b - a), 10, 2) : c.rect(a, wordY, Math.max(1.5, b - a), 10); c.fill(); }));
+  const px = Math.round(x(state.t)) + .5;
+  c.strokeStyle = colors.fg; c.lineWidth = 1.5; c.beginPath(); c.moveTo(px, top - 4); c.lineTo(px, wordY + 14); c.stroke();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => readColors());
+new MutationObserver(readColors).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+
+// Mini waveform on the Detecting screen
+$("miniWave").innerHTML = Array.from({length:34}, (_, i) => `<i class="${i < 21 ? "on" : ""}" style="height:${18 + Math.abs(Math.sin(i * .9) * 52 + Math.sin(i * .37) * 20)}%"></i>`).join("");
+
+// ---- Main loop ----
+let prev = performance.now();
+function tick(now) {
+  const dt = Math.min(.1, (now - prev) / 1000); prev = now;
+  if (state.playing) { state.t += dt; if (state.t > DUR) state.t = 0; scrub.value = state.t; }
+  scene(state.t); sampleLum(now, dt); render(state.t); drawDiag();
+  const m = Math.floor(state.t / 60), s = (state.t % 60).toFixed(1).padStart(4, "0");
+  $("time").textContent = `${m}:${s}`;
+  requestAnimationFrame(tick);
+}
+readColors(); layout(); applyStyle(); setPlaying(state.playing); state.lumInit = true;
+requestAnimationFrame(tick);
+})();
+</script>
